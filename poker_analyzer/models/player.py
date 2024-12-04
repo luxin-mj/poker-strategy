@@ -1,23 +1,23 @@
-from dataclasses import dataclass
-from typing import List
-from .card import Card
+import random
+import logging
 
-@dataclass
-class PlayerState:
-    user_id: int
-    nickname: str
-    position: str
-    stack: float
-    cards: List[Card]
-    vpip: float = 0.0
-    pfr: float = 0.0
-    wwsf: float = 0.0  # 看牌率
-    af: float = 0.0    # 攻击因子
-    hands_played: int = 0
-    
-    def update_stats(self, stats_data: dict):
-        """更新玩家统计数据"""
-        total_hands = stats_data.get("totalHand", 1)
-        self.hands_played = total_hands
-        self.vpip = round(stats_data.get("poolingHandNum", 0) / max(total_hands, 1) * 100, 2)
-        self.wwsf = round(stats_data.get("showdownNum", 0) / max(total_hands, 1) * 100, 2)
+class Player:
+    def __init__(self, user_id, db_manager, is_user=False):
+        self.user_id = user_id
+        self.db = db_manager
+        self.is_user = is_user
+        self.hand = []
+        self.chips = 100  # 初始筹码数量
+        self.in_pot = 0  # 当前轮次投入的筹码
+        self.logger = logging.getLogger(self.__class__.__name__)
+
+    def get_action(self, game_state, opponent_stats, strategy):
+        if self.is_user:
+            # 根据游戏状态和对手的行为给出建议动作
+            action = strategy.suggest_action(self, game_state, opponent_stats)
+            self.logger.info(f"玩家 {self.user_id} (你) 的手牌: {self.hand}, 当前轮次: {game_state['street']}, 彩池大小: {game_state['pot_size']} BB, 建议动作: {action}")
+        else:
+            actions = ["FOLD", "CALL", "RAISE", "ALL-IN"]
+            action = random.choice(actions)
+        self.logger.debug(f"玩家 {self.user_id} 选择的动作: {action}")
+        return action
